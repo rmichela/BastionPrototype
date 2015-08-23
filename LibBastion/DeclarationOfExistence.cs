@@ -4,6 +4,6 @@
     {
         public string Name { get; set; }
 
-        public string Owner { get; set; }
+        public Identity Owner { get; set; }
     }
 }

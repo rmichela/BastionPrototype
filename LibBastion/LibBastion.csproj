@@ -58,6 +58,8 @@
     <Compile Include="Bastion.cs" />
     <Compile Include="BastionException.cs" />
     <Compile Include="DeclarationOfExistence.cs" />
+    <Compile Include="Identity.cs" />
+    <Compile Include="Post.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

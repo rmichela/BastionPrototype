@@ -62,14 +62,19 @@ namespace LibBastion
 
         private Commit CreateDeclarationOfExistence(Repository repo, DeclarationOfExistence doe)
         {
-            var sig = new Signature(doe.Owner, doe.Name, DateTimeOffset.UtcNow);
+            var sig = new Signature(doe.Owner.Name, doe.Owner.Identifier, DateTimeOffset.UtcNow);
             var json = JsonConvert.SerializeObject(doe);
             return repo.ObjectDatabase.CreateCommit(sig, sig, json, EmptyTree(repo), new List<Commit>(), prettifyMessage: true);
         }
 
-        public void NewPost()
+        public void NewPost(Post post)
         {
-
+            using (var repo = new Repository(_directory.FullName))
+            {
+                var json = JsonConvert.SerializeObject(post);
+                var sig = new Signature(post.Author.Name, post.Author.Identifier, DateTimeOffset.UtcNow);
+                CommitToBranch(repo, CONTENT_BRANCH, json, sig, EmptyTree(repo));
+            }
         }
 
         public void ListPosts()
@@ -82,22 +87,29 @@ namespace LibBastion
 
         }
 
+        public void CommitToBranch(Repository repo, string branchName, string message, Signature author, Tree tree)
+        {
+            Branch branch = repo.Branches[branchName];
+            Commit commit = repo.ObjectDatabase.CreateCommit(author, author, message, tree, new List<Commit> { branch.Tip }, prettifyMessage: true);
+            repo.Refs.UpdateTarget(repo.Refs[branch.CanonicalName], commit.Id);
+        }
+
         private Stream ObjectToJsonStream(object obj)
         {
             return new MemoryStream(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(obj, Formatting.Indented)));
         }
 
-        public Tree EmptyTree(Repository repo)
+        private Tree EmptyTree(Repository repo)
         {
             return repo.Lookup<Tree>(repo.Tags[EMPTY_TREE].Target.Id);
         }
 
-        public Blob Upvote(Repository repo)
+        private Blob Upvote(Repository repo)
         {
             return repo.Lookup<Blob>(repo.Tags[UPVOTE].Target.Id);
         }
 
-        public Blob Downvote(Repository repo)
+        private Blob Downvote(Repository repo)
         {
             return repo.Lookup<Blob>(repo.Tags[DOWNVOTE].Target.Id);
         }

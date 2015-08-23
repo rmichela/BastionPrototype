@@ -13,35 +13,87 @@ namespace Bastiond
     {
         static void Main(string[] args)
         {
-            //using (var repo = new Repository(@"C:\Users\delta\Documents\GitHub\Bastion\testbare"))
-            //{
-            //    var ms = new MemoryStream(Encoding.ASCII.GetBytes("My first blob " + Guid.NewGuid().ToString()));
-            //    Blob blob = repo.ObjectDatabase.CreateBlob(ms);
-            //    TreeDefinition td = new TreeDefinition();
-            //    //td.Add("firstBlob.txt", blob, Mode.NonExecutableFile);
-            //    Tree tree = repo.ObjectDatabase.CreateTree(td);
-
-            //    Signature me = new Signature("Ryan", "deltahat@gmail.com", DateTimeOffset.Now);
-            //    Branch master = repo.Branches["master"];
-            //    Commit commit = repo.ObjectDatabase.CreateCommit(me, me, "Because I can", tree, new List<Commit>() { master.Tip }, true);
-
-            //    repo.Refs.UpdateTarget(repo.Refs[master.CanonicalName], commit.Id);
-
-            //    //repo.CreateBranch("master", c);
-
-            //    Console.WriteLine(commit.Sha);
-            //}
-
             var repoDir = new DirectoryInfo(args[0]);
+            ConsoleWriteLine(ConsoleColor.Yellow, "Using Bastion {0}", repoDir);
             var bastion = new Bastion(repoDir);
-            if (!repoDir.Exists)
+
+            string c = null;
+            while (c != "0")
             {
-                bastion.Init(new DeclarationOfExistence
+                c = ConsolePrompt(ConsoleColor.White, "0: Exit, 1: Init, 2: Post");
+
+                switch (c)
                 {
-                    Name = "The Bastion about Bastion",
-                    Owner = "Ryan"
-                });
+                    case "1": Init(bastion); break;
+                    case "2": NewPost(bastion); break;
+                }
             }
+        }
+
+        static void Init(Bastion bastion)
+        {
+            string name = ConsolePrompt(ConsoleColor.White, "Bastion name");
+            string ownerName = ConsolePrompt(ConsoleColor.White, "Owner's name");
+
+            bastion.Init(new DeclarationOfExistence
+            {
+                Name = "The Bastion about Bastion",
+                Owner = new Identity
+                {
+                    Name = name,
+                    Identifier = IdentifierForName(name).ToString()
+                }
+            });
+        }
+
+        static void NewPost(Bastion bastion)
+        {
+            string title = ConsolePrompt(ConsoleColor.White, "Post title");
+            string text = ConsolePrompt(ConsoleColor.White, "Post text");
+            string link = ConsolePrompt(ConsoleColor.White, "Post link");
+            string author = ConsolePrompt(ConsoleColor.White, "Post author");
+
+            bastion.NewPost(new Post
+            {
+                Title = title,
+                Text = text,
+                Link = string.IsNullOrWhiteSpace(link) ? null : new Uri(link),
+                Author = new Identity
+                {
+                    Name = author,
+                    Identifier = IdentifierForName(author).ToString()
+                }
+            });
+        }
+
+        static void ConsoleWriteLine(ConsoleColor color, string format, params object[] args)
+        {
+            Console.ForegroundColor = color;
+            Console.WriteLine(format, args);
+            Console.ResetColor();
+        }
+
+        static void ConsoleWrite(ConsoleColor color, string format, params object[] args)
+        {
+            Console.ForegroundColor = color;
+            Console.Write(format, args);
+            Console.ResetColor();
+        }
+
+        static string ConsolePrompt(ConsoleColor color, string format, params object[] args)
+        {
+            Console.ForegroundColor = color;
+            Console.Write(format + " > ", args);
+            Console.ResetColor();
+            return Console.ReadLine();
+        }
+
+        static Guid IdentifierForName(string name)
+        {
+            var r = new Random(name.GetHashCode());
+            var b = new byte[16];
+            r.NextBytes(b);
+            return new Guid(b);
         }
     }
 }
