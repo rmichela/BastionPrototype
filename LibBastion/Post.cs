@@ -11,5 +11,7 @@ namespace LibBastion
         public Uri Link { get; set; }
 
         public Identity Author { get; set; }
+
+        public DateTimeOffset Timestamp { get; set; }
     }
 }

@@ -20,12 +20,13 @@ namespace Bastiond
             string c = null;
             while (c != "0")
             {
-                c = ConsolePrompt(ConsoleColor.White, "0: Exit, 1: Init, 2: Post");
+                c = ConsolePrompt(ConsoleColor.White, "0: Exit, 1: Init, 2: Post, 3: List Posts");
 
                 switch (c)
                 {
                     case "1": Init(bastion); break;
                     case "2": NewPost(bastion); break;
+                    case "3": ListPosts(bastion); break;
                 }
             }
         }
@@ -62,8 +63,19 @@ namespace Bastiond
                 {
                     Name = author,
                     Identifier = IdentifierForName(author).ToString()
-                }
+                },
+                Timestamp = DateTimeOffset.UtcNow
             });
+        }
+
+        static void ListPosts(Bastion bastion)
+        {
+            foreach (var post in bastion.ListPosts())
+            {
+                ConsoleWrite(ConsoleColor.White, post.Timestamp.ToString());
+                ConsoleWrite(ConsoleColor.Green, " {0}", post.Title);
+                ConsoleWriteLine(ConsoleColor.Yellow, " {0} <{1}>", post.Author.Name, post.Author.Identifier);
+            }
         }
 
         static void ConsoleWriteLine(ConsoleColor color, string format, params object[] args)

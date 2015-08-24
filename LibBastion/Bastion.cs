@@ -72,14 +72,28 @@ namespace LibBastion
             using (var repo = new Repository(_directory.FullName))
             {
                 var json = JsonConvert.SerializeObject(post);
-                var sig = new Signature(post.Author.Name, post.Author.Identifier, DateTimeOffset.UtcNow);
+                var sig = new Signature(post.Author.Name, post.Author.Identifier, post.Timestamp);
                 CommitToBranch(repo, CONTENT_BRANCH, json, sig, EmptyTree(repo));
             }
         }
 
-        public void ListPosts()
+        public List<Post> ListPosts()
         {
+            using (var repo = new Repository(_directory.FullName))
+            {
+                var posts = new List<Post>();
 
+                // Get the most recent post from the content branch
+                Branch branch = repo.Branches[CONTENT_BRANCH];
+                DirectReference commitRef = repo.Refs[branch.CanonicalName].ResolveToDirectReference();
+
+                for (Commit commit = repo.Lookup<Commit>(commitRef.Target.Id); commit.Parents.Any(); commit = commit.Parents.First())
+                {
+                    posts.Add(JsonConvert.DeserializeObject<Post>(commit.Message));
+                }
+
+                return posts;
+            }
         }
 
         public void GetPost()
