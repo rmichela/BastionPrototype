@@ -13,5 +13,7 @@ namespace LibBastion
         public Identity Author { get; set; }
 
         public DateTimeOffset Timestamp { get; set; }
+
+        public string Id { get; set; }
     }
 }

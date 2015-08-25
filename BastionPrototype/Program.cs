@@ -1,5 +1,6 @@
 ﻿using LibBastion;
 using LibGit2Sharp;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -20,13 +21,14 @@ namespace Bastiond
             string c = null;
             while (c != "0")
             {
-                c = ConsolePrompt(ConsoleColor.White, "0: Exit, 1: Init, 2: Post, 3: List Posts");
+                c = ConsolePrompt(ConsoleColor.White, "0: Exit, 1: Init, 2: Post, 3: List, 4: Get");
 
                 switch (c)
                 {
                     case "1": Init(bastion); break;
                     case "2": NewPost(bastion); break;
                     case "3": ListPosts(bastion); break;
+                    case "4": GetPost(bastion); break;
                 }
             }
         }
@@ -72,16 +74,37 @@ namespace Bastiond
         {
             foreach (var post in bastion.ListPosts())
             {
-                ConsoleWrite(ConsoleColor.White, post.Timestamp.ToString());
+                ConsoleWrite(ConsoleColor.White, post.Id);
                 ConsoleWrite(ConsoleColor.Green, " {0}", post.Title);
                 ConsoleWriteLine(ConsoleColor.Yellow, " {0} <{1}>", post.Author.Name, post.Author.Identifier);
             }
+        }
+
+        static void GetPost(Bastion bastion)
+        {
+            string id = ConsolePrompt(ConsoleColor.White, "ID");
+            Post p = bastion.GetPost(id);
+            ConsoleWriteLine(ConsoleColor.Gray, JsonConvert.SerializeObject(p, Formatting.Indented));
         }
 
         static void ConsoleWriteLine(ConsoleColor color, string format, params object[] args)
         {
             Console.ForegroundColor = color;
             Console.WriteLine(format, args);
+            Console.ResetColor();
+        }
+
+        static void ConsoleWriteLine(ConsoleColor color, string format)
+        {
+            Console.ForegroundColor = color;
+            Console.WriteLine(format);
+            Console.ResetColor();
+        }
+
+        static void ConsoleWrite(ConsoleColor color, string format)
+        {
+            Console.ForegroundColor = color;
+            Console.Write(format);
             Console.ResetColor();
         }
 

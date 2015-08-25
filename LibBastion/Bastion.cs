@@ -89,14 +89,27 @@ namespace LibBastion
 
                 for (Commit commit = repo.Lookup<Commit>(commitRef.Target.Id); commit.Parents.Any(); commit = commit.Parents.First())
                 {
-                    posts.Add(JsonConvert.DeserializeObject<Post>(commit.Message));
+                    var post = JsonConvert.DeserializeObject<Post>(commit.Message);
+                    post.Id = commit.Sha;
+                    posts.Add(post);
                 }
 
                 return posts;
             }
         }
 
-        public void GetPost()
+        public Post GetPost(string id)
+        {
+            using (var repo = new Repository(_directory.FullName))
+            {
+                Commit commit = repo.Lookup<Commit>(id);
+                var post = JsonConvert.DeserializeObject<Post>(commit.Message);
+                post.Id = commit.Sha;
+                return post;
+            }
+        }
+
+        public void Vote(string id, Vote vote)
         {
 
         }
