@@ -1,8 +1,9 @@
 ﻿namespace LibBastion
 {
-    public enum Vote
+    public class Vote
     {
-        Upvote,
-        Downvote
+        public VoteType VoteType { get; set; }
+
+        public Identity Voter { get; set; }
     }
 }

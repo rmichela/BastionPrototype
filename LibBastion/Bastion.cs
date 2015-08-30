@@ -15,6 +15,8 @@ namespace LibBastion
         public const string DOWNVOTE = "Downvote";
         public const string CONTROL_BRANCH = "Control";
         public const string CONTENT_BRANCH = "Content";
+        public const string VOTES_DIR = "Votes";
+        public const string REPLIES_DIR = "Replies";
 
         private DirectoryInfo _directory;
 
@@ -73,7 +75,17 @@ namespace LibBastion
             {
                 var json = JsonConvert.SerializeObject(post);
                 var sig = new Signature(post.Author.Name, post.Author.Identifier, post.Timestamp);
-                CommitToBranch(repo, CONTENT_BRANCH, json, sig, EmptyTree(repo));
+
+                // Create post structure
+                var votesDir = repo.ObjectDatabase.CreateTree(new TreeDefinition());
+                var repliesDir = repo.ObjectDatabase.CreateTree(new TreeDefinition());
+                var postRoot = new TreeDefinition();
+                postRoot.Add(VOTES_DIR, votesDir);
+                postRoot.Add(REPLIES_DIR, repliesDir);
+                
+                var commit = CommitToBranch(repo, CONTENT_BRANCH, json, sig, repo.ObjectDatabase.CreateTree(postRoot));
+                // Create a named branch for all future content on this post
+                repo.CreateBranch(commit.Sha, commit);
             }
         }
 
@@ -98,27 +110,97 @@ namespace LibBastion
             }
         }
 
-        public Post GetPost(string id)
+        public VotedPost GetPost(string id)
         {
             using (var repo = new Repository(_directory.FullName))
             {
                 Commit commit = repo.Lookup<Commit>(id);
-                var post = JsonConvert.DeserializeObject<Post>(commit.Message);
+                var post = JsonConvert.DeserializeObject<VotedPost>(commit.Message);
                 post.Id = commit.Sha;
+
+                // Get the votes for the post
+                Commit postTip = repo.Branches[post.Id].Tip;
+                Tree postTree = postTip.Tree;
+                Tree votesDir = (Tree)postTree[VOTES_DIR].Target;
+                post.Votes = votesDir.Where(f => f.Mode == Mode.NonExecutableFile).Select(DecodeVote).ToList();
+
                 return post;
             }
         }
 
-        public void Vote(string id, Vote vote)
+        public void Vote(Post post, Identity voter, VoteType vote)
         {
+            using (var repo = new Repository(_directory.FullName))
+            {
+                var postCommit = repo.Branches[post.Id].Tip;
 
+                // Retrieve existing tree
+                var commitRoot = postCommit.Tree;
+                var votesDir = (Tree)commitRoot[VOTES_DIR].Target;
+                var repliesDir = (Tree)commitRoot[REPLIES_DIR].Target;
+
+                // Copy existing content to new votes treedef
+                var newVotesDir = new TreeDefinition();
+                foreach (TreeEntry obj in votesDir)
+                {
+                    newVotesDir.Add(obj.Name, obj);
+                }
+                // Add new vote to new votes treedef
+                Vote(repo, newVotesDir, vote);
+
+                // Assemble new root treedef
+                var newPostRoot = new TreeDefinition();
+                newPostRoot.Add(VOTES_DIR, repo.ObjectDatabase.CreateTree(newVotesDir));
+                newPostRoot.Add(REPLIES_DIR, repliesDir);
+
+                // Commit new root treedef to post branch
+                var message = string.Format("{0} by {1}", vote, voter.Name);
+                var sig = new Signature(voter.Name, voter.Identifier, DateTimeOffset.UtcNow);
+                CommitToBranch(repo, post.Id, message, sig, repo.ObjectDatabase.CreateTree(newPostRoot));
+            }
         }
 
-        public void CommitToBranch(Repository repo, string branchName, string message, Signature author, Tree tree)
+        private void Vote(Repository repo, TreeDefinition votesDir, VoteType vote)
+        {
+            switch (vote)
+            {
+                case LibBastion.VoteType.Upvote:
+                    votesDir.Add(UPVOTE, Upvote(repo), Mode.NonExecutableFile);
+                    break;
+                case LibBastion.VoteType.Downvote:
+                    votesDir.Add(DOWNVOTE, Downvote(repo), Mode.NonExecutableFile);
+                    break;
+            }
+        }
+
+        private Vote DecodeVote(TreeEntry v)
+        {
+            // TODO: Decode voter identity
+            switch (v.Name)
+            {
+                case UPVOTE:
+                    return new Vote
+                    {
+                        Voter = null,
+                        VoteType = VoteType.Upvote
+                    };
+                case DOWNVOTE:
+                    return new Vote
+                    {
+                        Voter = null,
+                        VoteType = VoteType.Downvote
+                    };
+                default:
+                    throw new BastionException("Unknown vote type " + v.Name);
+            }
+        }
+
+        public Commit CommitToBranch(Repository repo, string branchName, string message, Signature author, Tree tree)
         {
             Branch branch = repo.Branches[branchName];
             Commit commit = repo.ObjectDatabase.CreateCommit(author, author, message, tree, new List<Commit> { branch.Tip }, prettifyMessage: true);
             repo.Refs.UpdateTarget(repo.Refs[branch.CanonicalName], commit.Id);
+            return commit;
         }
 
         private Stream ObjectToJsonStream(object obj)

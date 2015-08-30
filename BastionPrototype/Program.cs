@@ -18,17 +18,22 @@ namespace Bastiond
             ConsoleWriteLine(ConsoleColor.Yellow, "Using Bastion {0}", repoDir);
             var bastion = new Bastion(repoDir);
 
+            if (!repoDir.Exists)
+            {
+                Init(bastion);
+            }
+
             string c = null;
             while (c != "0")
             {
-                c = ConsolePrompt(ConsoleColor.White, "0: Exit, 1: Init, 2: Post, 3: List, 4: Get");
+                c = ConsolePrompt(ConsoleColor.White, "1: Post, 2: List, 3: Get, 4: Vote");
 
                 switch (c)
                 {
-                    case "1": Init(bastion); break;
-                    case "2": NewPost(bastion); break;
-                    case "3": ListPosts(bastion); break;
-                    case "4": GetPost(bastion); break;
+                    case "1": NewPost(bastion); break;
+                    case "2": ListPosts(bastion); break;
+                    case "3": GetPost(bastion); break;
+                    case "4": PostVote(bastion); break;
                 }
             }
         }
@@ -85,6 +90,21 @@ namespace Bastiond
             string id = ConsolePrompt(ConsoleColor.White, "ID");
             Post p = bastion.GetPost(id);
             ConsoleWriteLine(ConsoleColor.Gray, JsonConvert.SerializeObject(p, Formatting.Indented));
+        }
+
+        static void PostVote(Bastion bastion)
+        {
+            string id = ConsolePrompt(ConsoleColor.White, "ID");
+            Post p = bastion.GetPost(id);
+            VoteType v = ConsolePrompt(ConsoleColor.White, "U/D") == "U" ? VoteType.Upvote : VoteType.Downvote;
+            string name = ConsolePrompt(ConsoleColor.White, "Post author");
+            Identity voter = new Identity
+            {
+                Name = name,
+                Identifier = IdentifierForName(name).ToString()
+            };
+
+            bastion.Vote(p, voter, v);
         }
 
         static void ConsoleWriteLine(ConsoleColor color, string format, params object[] args)
